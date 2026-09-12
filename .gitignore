@@ -1,0 +1,13 @@
+# Python Backend
+__pycache__/
+*.py[cod]
+**/venv/
+**/env/
+**/.env
+
+# Frontend dependencies and build output
+**/node_modules/
+**/dist/
+
+# OS Files
+.DS_Store

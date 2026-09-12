@@ -1,4 +1,5 @@
-import json
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 from fastapi import FastAPI, HTTPException, UploadFile, File
@@ -20,6 +21,7 @@ app.add_middleware(
 model = None
 standards_df = None
 embeddings_matrix = None
+DATASET_PATH = Path(__file__).resolve().parent / "processed_standards.json"
 
 class QueryRequest(BaseModel):
     text: str
@@ -32,7 +34,7 @@ def load_resources():
     model = SentenceTransformer('all-MiniLM-L6-v2')
     
     try:
-        standards_df = pd.read_json("processed_standards.json")
+        standards_df = pd.read_json(DATASET_PATH)
         embeddings_matrix = np.array(standards_df['embedding'].tolist())
         print(f"Loaded {len(standards_df)} standards successfully.")
     except Exception as e:

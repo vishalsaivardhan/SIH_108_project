@@ -2,7 +2,4 @@ fastapi
 python-multipart
 uvicorn
 pydantic
-sentence-transformers
-pandas
-numpy
 scikit-learn

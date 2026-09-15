@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import "./App.css";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const API_URL = import.meta.env.VITE_API_URL || "https://sih-108-project.onrender.com";
 const SAMPLE_QUERIES = [
   "High strength deformed steel bars for concrete reinforcement",
   "Drinking water supplies intended for public consumption",

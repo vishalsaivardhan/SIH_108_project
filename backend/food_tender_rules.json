@@ -1,0 +1,17 @@
+{
+  "version": "1.0",
+  "domain": "food procurement",
+  "certificate_checks": [
+    {"id": "fssai", "label": "FSSAI licence", "patterns": ["fssai", "food safety and standards authority", "food licence", "food license"], "weight": 25, "critical": true},
+    {"id": "gst", "label": "GST registration", "patterns": ["gstin", "gst registration", "goods and services tax"], "weight": 10, "critical": false},
+    {"id": "haccp", "label": "HACCP or ISO 22000", "patterns": ["haccp", "iso 22000", "iso22000", "food safety management system"], "weight": 20, "critical": true},
+    {"id": "lab_testing", "label": "Accredited laboratory test reports", "patterns": ["nab l", "nabl", "laboratory test", "lab test", "certificate of analysis", "coa"], "weight": 15, "critical": true},
+    {"id": "traceability", "label": "Batch traceability and recall procedure", "patterns": ["batch traceability", "traceability", "recall procedure", "recall plan"], "weight": 10, "critical": true},
+    {"id": "insurance", "label": "Product liability insurance", "patterns": ["product liability", "liability insurance", "insurance certificate"], "weight": 5, "critical": false}
+  ],
+  "requirement_checks": [
+    {"id": "cold_chain", "label": "Cold-chain temperature controls", "patterns": ["cold chain", "temperature log", "refrigerated", "0-4", "-18", "frozen"], "weight": 5, "critical": true},
+    {"id": "shelf_life", "label": "Minimum remaining shelf life", "patterns": ["shelf life", "remaining shelf", "expiry", "expiration"], "weight": 5, "critical": true},
+    {"id": "packaging", "label": "Food-grade packaging and labelling", "patterns": ["food-grade", "food grade", "labelling", "labeling", "ingredients", "allergen"], "weight": 5, "critical": false}
+  ]
+}

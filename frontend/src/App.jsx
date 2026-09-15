@@ -18,6 +18,7 @@ function App() {
   const [query, setQuery] = useState("");
   const [selectedFile, setSelectedFile] = useState(null);
   const [recommendations, setRecommendations] = useState([]);
+  const [tenderAnalysis, setTenderAnalysis] = useState(null);
   const [activeTab, setActiveTab] = useState("text");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -30,10 +31,11 @@ function App() {
 
   const handleTextSearch = useCallback(async () => {
     if (!query.trim()) { setError("Please enter a procurement specification to analyze."); return; }
-    setLoading(true); setError(""); setRecommendations([]);
+    setLoading(true); setError(""); setRecommendations([]); setTenderAnalysis(null);
     try {
       const response = await axios.post(`${API_URL}/api/recommend`, { text: query.trim(), top_k: 3 });
       setRecommendations(response.data.recommendations || []);
+      setTenderAnalysis(response.data.tender_analysis || null);
     } catch (requestError) {
       setError(requestError?.response?.data?.detail || "Unable to connect to the analysis engine. Please ensure the FastAPI backend is running.");
     } finally { setLoading(false); }
@@ -53,11 +55,12 @@ function App() {
   const handleFileUpload = async (event) => {
     event.preventDefault();
     if (!selectedFile) { setError("Please select a document first."); return; }
-    setLoading(true); setError(""); setRecommendations([]);
+    setLoading(true); setError(""); setRecommendations([]); setTenderAnalysis(null);
     try {
       const formData = new FormData(); formData.append("file", selectedFile);
       const response = await axios.post(`${API_URL}/api/upload-analyze`, formData, { headers: { "Content-Type": "multipart/form-data" } });
       setRecommendations(response.data.recommendations || []);
+      setTenderAnalysis(response.data.tender_analysis || null);
     } catch (requestError) {
       setError(requestError?.response?.data?.detail || "Document analysis failed. Please try again.");
     } finally { setLoading(false); }
@@ -90,7 +93,8 @@ function App() {
 
         <section className="how-section" id="how-it-works"><div className="section-kicker"><span>02</span><span>How it works</span><i /></div><div className="steps"><Step number="01" title="Describe" text="Share the language your project already uses." icon={<FileText />} /><Step number="02" title="Understand" text="Our semantic engine reads the intent behind it." icon={<Sparkles />} /><Step number="03" title="Decide" text="Get standards you can trust, with context." icon={<CheckCircle2 />} /></div></section>
         {loading && !recommendations.length && <div className="loading-card"><LoaderCircle className="spin" size={24} /><div><strong>Reading your requirement</strong><span>Comparing BIS catalog matrices and normative references...</span></div></div>}
-        {recommendations.length > 0 && !loading && <section className="results-section" id="results"><div className="results-heading"><div><div className="eyebrow"><CheckCircle2 size={14} /> Analysis complete</div><h2>Standards worth knowing</h2></div><span>{recommendations.length} recommendations</span></div><div className="results-list">{recommendations.map((item, index) => <ResultCard key={`${item.is_code}-${index}`} item={item} index={index} isDark={isDark} copiedCode={copiedCode} onCopy={copyToClipboard} />)}</div></section>}
+        {tenderAnalysis && !loading && <TenderAnalysis analysis={tenderAnalysis} />}
+        {recommendations.length > 0 && !loading && <section className="results-section" id="results"><div className="results-heading"><div><div className="eyebrow"><CheckCircle2 size={14} /> Standards match</div><h2>Standards worth knowing</h2></div><span>{recommendations.length} recommendations</span></div><div className="results-list">{recommendations.map((item, index) => <ResultCard key={`${item.is_code}-${index}`} item={item} index={index} isDark={isDark} copiedCode={copiedCode} onCopy={copyToClipboard} />)}</div></section>}
       </main>
       <footer><span>lex·procure / standards intelligence</span><span><ShieldCheck size={15} /> Built for confident procurement</span></footer>
     </div>
@@ -98,6 +102,10 @@ function App() {
 }
 
 function Step({ number, title, text, icon }) { return <div className="step"><span className="step-number">{number}</span><div className="step-icon">{icon}</div><h3>{title}</h3><p>{text}</p></div>; }
+function TenderAnalysis({ analysis }) {
+  const checks = [...(analysis.certificate_checks || []), ...(analysis.requirement_checks || [])];
+  return <section className="analysis-section" aria-label="Food tender verification"><div className="section-kicker"><span>03</span><span>Food tender verification</span><i /></div><div className="analysis-grid"><div className="rating-panel"><p className="eyebrow"><ShieldCheck size={14} /> Screening rating</p><strong className="rating-score">{analysis.score}<small>/100</small></strong><span className={`rating-label ${analysis.rating === "Ready for verification" ? "rating-ready" : "rating-risk"}`}>{analysis.rating}</span><p>{analysis.issue_count} issue{analysis.issue_count === 1 ? "" : "s"} need attention.</p></div><div className="checks-panel"><div className="analysis-heading"><h3>Evidence checklist</h3><span>Document-level screening</span></div><div className="check-list">{checks.map((check) => <div className="check-row" key={check.id}><span className={check.status === "evidence_found" ? "check-found" : "check-missing"}>{check.status === "evidence_found" ? <CheckCircle2 size={15} /> : <AlertCircle size={15} />}</span><span>{check.label}</span><small>{check.status === "evidence_found" ? "Mentioned" : "Missing"}</small></div>)}</div></div></div>{analysis.issues?.length > 0 && <div className="issues-panel"><div className="analysis-heading"><h3>Issues to resolve</h3><span>{analysis.issues.length} flagged</span></div>{analysis.issues.map((issue, index) => <div className="issue-row" key={`${issue.area}-${index}`}><AlertCircle size={15} /><div><strong>{issue.message}</strong><span>{issue.action}</span></div><small>{issue.severity}</small></div>)}</div>}<p className="verification-note"><ShieldCheck size={14} /> {analysis.certificate_verification_note}</p></section>;
+}
 function ResultCard({ item, index, isDark, copiedCode, onCopy }) {
   const verified = item.verification_status === "Verified";
   const percentage = Math.min(100, Math.max(0, Number(item.similarity_score || 0) * 100));

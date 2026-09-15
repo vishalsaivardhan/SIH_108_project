@@ -63,6 +63,7 @@ def recommend_standards(query: QueryRequest):
         "query": query.text,
         "recommendations": find_recommendations(query.text, query.top_k),
         "tender_analysis": analyze_food_tender(query.text),
+        "standards_note": standards_note(query.text),
     }
 
 @app.post("/api/upload-analyze")
@@ -77,6 +78,7 @@ async def upload_analyze_tender(file: UploadFile = File(...), top_k: int = 3):
         "filename": file.filename,
         "recommendations": find_recommendations(tender_text, top_k),
         "tender_analysis": analyze_food_tender(tender_text),
+        "standards_note": standards_note(tender_text),
     }
 
 
@@ -150,6 +152,7 @@ def find_recommendations(text, top_k):
     for idx in top_indices:
         score = float(similarities[idx])
         row = standards[idx]
+        match_status = "Strong match" if score >= 0.45 else "Related match" if score >= 0.2 else "Low-confidence match"
         results.append({
             "is_code": row["is_code"],
             "title": row["title"],
@@ -159,7 +162,17 @@ def find_recommendations(text, top_k):
             "mandatory_certifications": row["mandatory_certifications"],
             "latest_version": row["latest_version"],
             "similarity_score": round(score, 4),
-            "verification_status": "Verified" if score >= 0.45 else "Unverified",
+            "match_status": match_status,
+            "verification_status": "Not independently verified",
         })
 
     return results
+
+
+def standards_note(text):
+    food_terms = ("food", "fssai", "milk", "meal", "edible", "haccp", "nabl", "cold chain")
+    if any(term in text.lower() for term in food_terms):
+        has_food_standard = any("food" in (row.get("category", "") + row.get("title", "") + row.get("scope", "")).lower() for row in standards)
+        if not has_food_standard:
+            return "The current standards library has no food-category records. Results below are related-library matches, not food-standard confirmation."
+    return ""

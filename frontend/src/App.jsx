@@ -19,6 +19,7 @@ function App() {
   const [selectedFile, setSelectedFile] = useState(null);
   const [recommendations, setRecommendations] = useState([]);
   const [tenderAnalysis, setTenderAnalysis] = useState(null);
+  const [standardsNote, setStandardsNote] = useState("");
   const [activeTab, setActiveTab] = useState("text");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -31,11 +32,12 @@ function App() {
 
   const handleTextSearch = useCallback(async () => {
     if (!query.trim()) { setError("Please enter a procurement specification to analyze."); return; }
-    setLoading(true); setError(""); setRecommendations([]); setTenderAnalysis(null);
+    setLoading(true); setError(""); setRecommendations([]); setTenderAnalysis(null); setStandardsNote("");
     try {
       const response = await axios.post(`${API_URL}/api/recommend`, { text: query.trim(), top_k: 3 });
       setRecommendations(response.data.recommendations || []);
       setTenderAnalysis(response.data.tender_analysis || null);
+      setStandardsNote(response.data.standards_note || "");
     } catch (requestError) {
       setError(requestError?.response?.data?.detail || "Unable to connect to the analysis engine. Please ensure the FastAPI backend is running.");
     } finally { setLoading(false); }
@@ -55,12 +57,13 @@ function App() {
   const handleFileUpload = async (event) => {
     event.preventDefault();
     if (!selectedFile) { setError("Please select a document first."); return; }
-    setLoading(true); setError(""); setRecommendations([]); setTenderAnalysis(null);
+    setLoading(true); setError(""); setRecommendations([]); setTenderAnalysis(null); setStandardsNote("");
     try {
       const formData = new FormData(); formData.append("file", selectedFile);
       const response = await axios.post(`${API_URL}/api/upload-analyze`, formData, { headers: { "Content-Type": "multipart/form-data" } });
       setRecommendations(response.data.recommendations || []);
       setTenderAnalysis(response.data.tender_analysis || null);
+      setStandardsNote(response.data.standards_note || "");
     } catch (requestError) {
       setError(requestError?.response?.data?.detail || "Document analysis failed. Please try again.");
     } finally { setLoading(false); }
@@ -94,7 +97,7 @@ function App() {
         <section className="how-section" id="how-it-works"><div className="section-kicker"><span>02</span><span>How it works</span><i /></div><div className="steps"><Step number="01" title="Describe" text="Share the language your project already uses." icon={<FileText />} /><Step number="02" title="Understand" text="Our semantic engine reads the intent behind it." icon={<Sparkles />} /><Step number="03" title="Decide" text="Get standards you can trust, with context." icon={<CheckCircle2 />} /></div></section>
         {loading && !recommendations.length && <div className="loading-card"><LoaderCircle className="spin" size={24} /><div><strong>Reading your requirement</strong><span>Comparing BIS catalog matrices and normative references...</span></div></div>}
         {tenderAnalysis && !loading && <TenderAnalysis analysis={tenderAnalysis} />}
-        {recommendations.length > 0 && !loading && <section className="results-section" id="results"><div className="results-heading"><div><div className="eyebrow"><CheckCircle2 size={14} /> Standards match</div><h2>Standards worth knowing</h2></div><span>{recommendations.length} recommendations</span></div><div className="results-list">{recommendations.map((item, index) => <ResultCard key={`${item.is_code}-${index}`} item={item} index={index} isDark={isDark} copiedCode={copiedCode} onCopy={copyToClipboard} />)}</div></section>}
+        {recommendations.length > 0 && !loading && <section className="results-section" id="results"><div className="results-heading"><div><div className="eyebrow"><CheckCircle2 size={14} /> Standards match</div><h2>Standards worth knowing</h2></div><span>{recommendations.length} recommendations</span></div>{standardsNote && <div className="standards-note"><AlertCircle size={16} /><span>{standardsNote}</span></div>}<div className="results-list">{recommendations.map((item, index) => <ResultCard key={`${item.is_code}-${index}`} item={item} index={index} isDark={isDark} copiedCode={copiedCode} onCopy={copyToClipboard} />)}</div></section>}
       </main>
       <footer><span>lex·procure / standards intelligence</span><span><ShieldCheck size={15} /> Built for confident procurement</span></footer>
     </div>
@@ -107,9 +110,9 @@ function TenderAnalysis({ analysis }) {
   return <section className="analysis-section" aria-label="Food tender verification"><div className="section-kicker"><span>03</span><span>Food tender verification</span><i /></div><div className="analysis-grid"><div className="rating-panel"><p className="eyebrow"><ShieldCheck size={14} /> Screening rating</p><strong className="rating-score">{analysis.score}<small>/100</small></strong><span className={`rating-label ${analysis.rating === "Ready for verification" ? "rating-ready" : "rating-risk"}`}>{analysis.rating}</span><p>{analysis.issue_count} issue{analysis.issue_count === 1 ? "" : "s"} need attention.</p></div><div className="checks-panel"><div className="analysis-heading"><h3>Evidence checklist</h3><span>Document-level screening</span></div><div className="check-list">{checks.map((check) => <div className="check-row" key={check.id}><span className={check.status === "evidence_found" ? "check-found" : "check-missing"}>{check.status === "evidence_found" ? <CheckCircle2 size={15} /> : <AlertCircle size={15} />}</span><span>{check.label}</span><small>{check.status === "evidence_found" ? "Mentioned" : "Missing"}</small></div>)}</div></div></div>{analysis.issues?.length > 0 && <div className="issues-panel"><div className="analysis-heading"><h3>Issues to resolve</h3><span>{analysis.issues.length} flagged</span></div>{analysis.issues.map((issue, index) => <div className="issue-row" key={`${issue.area}-${index}`}><AlertCircle size={15} /><div><strong>{issue.message}</strong><span>{issue.action}</span></div><small>{issue.severity}</small></div>)}</div>}<p className="verification-note"><ShieldCheck size={14} /> {analysis.certificate_verification_note}</p></section>;
 }
 function ResultCard({ item, index, isDark, copiedCode, onCopy }) {
-  const verified = item.verification_status === "Verified";
+  const verified = item.match_status === "Strong match";
   const percentage = Math.min(100, Math.max(0, Number(item.similarity_score || 0) * 100));
-  return <article className={`result-card ${isDark ? "dark-card" : ""}`}><div className="result-top"><span className="result-index">0{index + 1}</span><div className="result-code"><span>{item.is_code}</span><button onClick={() => onCopy(item.is_code)} aria-label="Copy IS code">{copiedCode === item.is_code ? <Check size={14} /> : <Clipboard size={14} />}</button></div><span className={`status ${verified ? "verified" : "review"}`}>{verified ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}{item.verification_status}</span></div><div className="result-title"><h3>{item.title}</h3><span>{percentage.toFixed(1)}% confidence</span></div><div className="confidence-bar"><i style={{ width: `${percentage}%` }} /></div><p className="scope">{item.scope}</p><div className="result-meta"><Info label="Category" value={item.category} /><Info label="Certifications" value={item.mandatory_certifications} icon={<Award size={13} />} /><Info label="Latest version" value={item.latest_version} /></div>{item.normative_references && <div className="references"><ChevronRight size={15} /><span><b>Normative references</b> {item.normative_references}</span></div>}</article>;
+  return <article className={`result-card ${isDark ? "dark-card" : ""}`}><div className="result-top"><span className="result-index">0{index + 1}</span><div className="result-code"><span>{item.is_code}</span><button onClick={() => onCopy(item.is_code)} aria-label="Copy IS code">{copiedCode === item.is_code ? <Check size={14} /> : <Clipboard size={14} />}</button></div><span className={`status ${verified ? "verified" : "review"}`}>{verified ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}{item.match_status || item.verification_status}</span></div><div className="result-title"><h3>{item.title}</h3><span>{percentage.toFixed(1)}% confidence</span></div><div className="confidence-bar"><i style={{ width: `${percentage}%` }} /></div><p className="scope">{item.scope}</p><div className="result-meta"><Info label="Category" value={item.category} /><Info label="Certifications" value={item.mandatory_certifications} icon={<Award size={13} />} /><Info label="Latest version" value={item.latest_version} /></div>{item.normative_references && <div className="references"><ChevronRight size={15} /><span><b>Normative references</b> {item.normative_references}</span></div>}</article>;
 }
 function Info({ label, value, icon }) { return <div><span>{icon}{label}</span><strong>{value || "Not specified"}</strong></div>; }
 export default App;
